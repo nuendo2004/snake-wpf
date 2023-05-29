@@ -13,18 +13,24 @@ namespace snake_wpf.src
         public GridValue[,] Grid { get; }
         public Direction CurrentDir { get; private set; }
         public int Score { get; private set; }
-        public bool GameOver { get; private set; }
-        public int GameSpeend { get; private set; }
+        public bool IsGameOver { get; private set; }
+        public int GameSpeend { get; private set; } = 500;
 
         private readonly LinkedList<Position> Snake = new LinkedList<Position>();
         private readonly Random random = new Random();
 
+        public void SetGameSpeed(int speed)
+        {
+            GameSpeend = speed;
+        }
         public GameState(int rows, int cols)
         {
             Rows = rows; Cols = cols;
             Grid = new GridValue[Rows, Cols];
             CurrentDir = Direction.Right;
             Score = 0;
+            SpawnSnake();
+            SpawnFood();
         }
 
         public void SpawnSnake()
@@ -81,9 +87,8 @@ namespace snake_wpf.src
             return Snake;
         }
 
-        private void AddHead()
+        private void AddHead(Position newHead)
         {
-            Position newHead = Snake.First.Value.translate(CurrentDir);
             Snake.AddFirst(newHead);
             Grid[newHead.Row, newHead.Column] = GridValue.Snake;
         }
@@ -97,7 +102,48 @@ namespace snake_wpf.src
         
         public void ChangeDirection(Direction direction)
         {
+            CurrentDir = direction;
+        }
 
+        public bool IsOutOfBounce(Position pos)
+        {
+            return pos.Row < 0 || pos.Column < 0 || pos.Row >= Rows || pos.Column >= Cols;
+        }
+
+        private GridValue NextGrid(Position newHeadPos)
+        {
+            if (IsOutOfBounce(newHeadPos))
+            {
+                return GridValue.OutSide;
+            }
+            // in case of current head.next is the current tail, the snake will not die
+            if (newHeadPos == GetTail())
+            {
+                return GridValue.Empty;
+            }
+
+            return Grid[newHeadPos.Row, newHeadPos.Column];
+        }
+
+        public void Move()
+        {
+            Position newPos = GetHead().translate(CurrentDir);
+            GridValue nextMove = NextGrid(newPos);
+            if (nextMove == GridValue.OutSide || nextMove == GridValue.Snake)
+            {
+                IsGameOver = true;
+            }
+            else if (nextMove == GridValue.Empty)
+            {
+                RemoveTail();
+                AddHead(newPos);
+            }
+            else
+            {
+                AddHead(newPos);
+                Score++;
+                SpawnFood();
+            }    
         }
     }
 }
