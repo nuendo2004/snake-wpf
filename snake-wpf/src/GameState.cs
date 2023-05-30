@@ -14,14 +14,16 @@ namespace snake_wpf.src
         public Direction CurrentDir { get; private set; }
         public int Score { get; private set; }
         public bool IsGameOver { get; private set; }
-        public int GameSpeend { get; private set; } = 500;
+        public int GameSpeed { get; private set; } = 120;
+        public int Level = 1;
 
+        private readonly Queue<Direction> _directionsQueue = new Queue<Direction>();
         private readonly LinkedList<Position> Snake = new LinkedList<Position>();
         private readonly Random random = new Random();
 
         public void SetGameSpeed(int speed)
         {
-            GameSpeend = speed;
+            GameSpeed = speed;
         }
         public GameState(int rows, int cols)
         {
@@ -37,10 +39,10 @@ namespace snake_wpf.src
         {
             int row = random.Next(2, Rows - 3);
             int col = random.Next(2, Cols - 3);
-            for (int i = col; i < col + 4; i++)
+            for (int i = col; i < col + 3; i++)
             {
-                Grid[row, col] = GridValue.Snake;
-                Snake.AddFirst(new Position(row, col));
+                Grid[row, i] = GridValue.Snake;
+                Snake.AddFirst(new Position(row, i));
             }
         }
 
@@ -100,9 +102,28 @@ namespace snake_wpf.src
             Snake.RemoveLast();
         }
         
+        private Direction GetLastDirection()
+        {
+            if (_directionsQueue.Count == 0)
+            {
+                return CurrentDir;
+            }
+            return _directionsQueue.Peek();
+        }
+
+        private bool AllowChangeDir(Direction dir)
+        {
+            if (_directionsQueue.Count == 2) return false;
+            Direction last = GetLastDirection();
+            return dir != last && dir != last.Opposite();
+        }
+
         public void ChangeDirection(Direction direction)
         {
-            CurrentDir = direction;
+            if (AllowChangeDir(direction))
+            {
+                _directionsQueue.Enqueue(direction);
+            }       
         }
 
         public bool IsOutOfBounce(Position pos)
@@ -127,6 +148,11 @@ namespace snake_wpf.src
 
         public void Move()
         {
+            if (_directionsQueue.Count > 0)
+            {
+                CurrentDir = _directionsQueue.Dequeue();
+            }
+
             Position newPos = GetHead().translate(CurrentDir);
             GridValue nextMove = NextGrid(newPos);
             if (nextMove == GridValue.OutSide || nextMove == GridValue.Snake)
@@ -142,8 +168,17 @@ namespace snake_wpf.src
             {
                 AddHead(newPos);
                 Score++;
+
+                IncreaseSpeend();
                 SpawnFood();
             }    
+        }
+
+        private void IncreaseSpeend()
+        {
+            if (GameSpeed == 1 || Score % 5 != 0) { return; }
+            SetGameSpeed(GameSpeed - 20);
+            Level++;
         }
     }
 }
